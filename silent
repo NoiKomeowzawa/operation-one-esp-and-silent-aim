@@ -1,0 +1,133 @@
+-- HOLD THE SILENTAIMKEY FOR IT TO WORK
+
+
+local rs = cloneref(game:getService("ReplicatedStorage"))
+local players = cloneref(game:GetService("Players"))
+local workspace = cloneref(game:GetService("Workspace"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local RunService = cloneref(game:GetService("RunService"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local Light = cloneref(game:GetService("Lighting"))
+local Deb = cloneref(game:GetService("Debris"))
+
+local SilentAimKey = Enum.KeyCode.RightBracket -- change this 
+local lpm
+local lp = players.LocalPlayer
+local Mouse = lp:GetMouse()
+local camera = workspace.CurrentCamera
+local playerGUI = players.LocalPlayer.PlayerGui
+
+
+local msfire = require(rs.Modules.Event)
+local mscalshot = require(rs.Modules.Util)
+local function TempVisualiseRay(origin, direction)
+        local length = direction.Magnitude
+        local midpoint = origin + direction * 0.5
+        local RayPart = Instance.new("Part")
+        
+        RayPart.Anchored = true
+        RayPart.CanCollide = false
+        RayPart.CanQuery = false
+        RayPart.Transparency = 0.5
+        RayPart.Material = Enum.Material.Neon
+        RayPart.Color = Color3.fromRGB(255,255,255)
+        RayPart.Size = Vector3.new(0.03, 0.03, length)
+        RayPart.CFrame = CFrame.lookAt(midpoint, origin + direction)
+        RayPart.Parent = workspace
+        
+        local lifetime = 0.1
+        if shared.GunSettings and shared.GunSettings.firerate then
+            lifetime = (60 / shared.GunSettings.firerate)
+        end
+        Deb:AddItem(RayPart, lifetime)
+    end
+
+local function ShootRay(head, OriginPosition)
+        if not head then return end
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {lpm}
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+        local toTarget = head.Position - OriginPosition.Position
+        local direction = toTarget.Unit * toTarget.Magnitude
+
+        local result = workspace:Raycast(OriginPosition.Position, direction, raycastParams)
+        TempVisualiseRay(OriginPosition.Position, direction)
+        if result then 
+            return result.Instance, result.Normal, result.Position
+        end
+        return nil
+    end
+
+local function target()
+    local ClosestPlr = math.huge
+    local Closest
+    local PlayerModels = workspace.Viewmodels
+    local Shotpart
+    local Gunremote
+    for _,m in pairs(PlayerModels:GetChildren()) do
+        if m.Name == "Teammate"  then continue end
+        if m.Name == "LocalViewmodel" then 
+            lpm = m
+            Shotpart = m:FindFirstChild("Shot", true)
+            for _,r in pairs(lpm:GetDescendants()) do
+                if r:IsA("RemoteEvent") and r.Name == "remote" and r.Parent.Name == "StateObject" then
+                    Gunremote = r
+                end
+            end
+        end
+        if m.Name == "Enemy" then
+            local head = m:FindFirstChild("head") 
+            local Screenpos, Onscreen = camera:WorldToViewportPoint(head.Position)
+            Screenpos = Vector2.new(Screenpos.X, Screenpos.Y)
+            if not Onscreen then continue end
+            local MouseVec3 = UserInputService:GetMouseLocation()
+            local distance = (Screenpos - MouseVec3).Magnitude
+            if distance < ClosestPlr then
+                ClosestPlr = distance
+                Closest = head
+            end 
+        end
+    end
+    return Closest, Shotpart, Gunremote
+end
+local isHoldingG = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == SilentAimKey then
+        isHoldingG = true
+        while isHoldingG do
+            local Closest, Shotpart, Gunremote = target()
+            local _,Normal,_ = ShootRay(Closest,Shotpart)
+            if not Normal then
+                warn("Normal missing")
+                return
+            end
+            if not Closest then
+                warn("Closest missing")
+                return
+            end
+            if not Shotpart then
+                warn("Shotpart missing")
+                return
+            end
+            if not Gunremote then
+                warn("Gunremote missing")
+                return
+            end
+            Gunremote:FireServer("shoot", Shotpart.CFrame, {{{
+                Instance = Closest,
+                Normal = Normal,
+                Position = Closest.Position}}})
+            task.wait(.05)
+        end
+
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == SilentAimKey then
+        isHoldingG = false
+    end
+end)
