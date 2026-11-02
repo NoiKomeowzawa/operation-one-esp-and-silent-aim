@@ -1,0 +1,527 @@
+-- if u actually look at code please give this a read especially the comments <3
+local GunSettings = { -- Gun Settings these are best for the m249/m60 :D
+        firerate =  1100,
+        recoil_up = 0.025, -- pls dont set the recoil to 0 its detected 
+        recoil_side = 0.025, -- pls dont set the recoil to 0 its detected 
+        Walkspeed = 1.133, 
+        spread = 0.03, -- pls dont set the spread to 0 its detected 
+        ads = 0.25,
+        AlterReloadSpeed = false, -- i honestly dont know what happens when u turn both to true i never tried it
+        AlterReloadSpeedWithDivide = true,
+        reload_speed = 0.4, -- pls dont set the reload speed to below 0.2 its detected
+        
+}
+local Settings = {
+    SilentAimKey = Enum.KeyCode.RightBracket, -- change this to liking
+    RemoveScope = true,
+    RemoveArms = true, -- for whatever reason this only works on certain outfits like the black one
+    CHAMS = true,
+    TransparentSoftwalls = true,
+    TransparentGun = true, -- not done
+    FieldOfView = 150,
+    jasmode = true,
+    GunModifications = true,
+    SilentAim = true, 
+    ESP = true,
+}
+
+
+
+local start = os.clock()
+local rs = cloneref(game:getService("ReplicatedStorage"))
+local players = cloneref(game:GetService("Players"))
+local workspace = cloneref(game:GetService("Workspace"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local RunService = cloneref(game:GetService("RunService"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local Light = cloneref(game:GetService("Lighting"))
+local Deb = cloneref(game:GetService("Debris"))
+
+local LocalPlayerModel
+local LocalPlayerTeam = players.LocalPlayer:GetAttribute("Team")
+local lp = players.LocalPlayer
+local Mouse = lp:GetMouse()
+local Camera = workspace.CurrentCamera
+local playerGUI = players.LocalPlayer.PlayerGui
+
+
+
+local PlayerModels = workspace.Viewmodels
+local TmHighlights = {}
+local PlayerTeam = {}
+local PlayerTeamIds = {}
+
+local function jasmode()
+    if Settings.jasmode == true then
+    local jasnoob = "jas noob"
+    
+    for _,v in players:GetChildren() do
+        v.Name = jasnoob
+        v.DisplayName = jasnoob
+    end
+    for _,v in lp.PlayerGui:GetDescendants() do
+        if v.Name == "PlayerBoardInfo" and v:IsA("TextButton") then
+            v.Title.Text = jasnoob
+        end
+    end
+    lp.Name = "swungbysnowy"
+    lp.DisplayName = "swungbysnowy"
+    end
+end
+Camera:SetAttribute("OriginalFOV", Settings.FieldOfView)
+Camera.FieldOfView = Settings.FieldOfView
+ 
+local EnemyName = "Enemy"
+for _, player in pairs(players:GetChildren()) do
+    if LocalPlayerTeam == player:GetAttribute("Team") then
+        table.insert(PlayerTeam, player)
+        table.insert(PlayerTeamIds, player.UserId)
+        
+    end
+end
+local TeammateName = "temie"
+local EspName = "rg24579byh"
+local function DrawnewESP(EspPart,R,G,B,Transparency,Name, Utility : boolean, IfUtility : string, BoxSize)
+    local BillboardGui = Instance.new("BillboardGui")
+    local Frame = Instance.new("Frame")
+    
+    BillboardGui.Parent = EspPart
+    BillboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    BillboardGui.Active = true
+    BillboardGui.AlwaysOnTop = true
+    BillboardGui.LightInfluence = 1.000
+    BillboardGui.Size = UDim2.new(2, 0, 2, 0)
+    BillboardGui.Name = Name
+ 
+    Frame.Parent = BillboardGui
+    Frame.BackgroundColor3 = Color3.fromRGB(R,G,B)
+    Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    Frame.BorderSizePixel = 0
+    Frame.Size = UDim2.new(0.5, 0, 0.5, 0)
+    Frame.Position = UDim2.new(BoxSize, 0, BoxSize, 0)
+    Frame.ZIndex = 5
+    Frame.Transparency = Transparency
+    if Utility == true then
+        local TextLabel = Instance.new("TextLabel")
+        TextLabel.Parent = BillboardGui
+        TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TextLabel.BackgroundTransparency = 1.000
+        TextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        TextLabel.BorderSizePixel = 0
+        TextLabel.Size = UDim2.new(1, 0, 0.3, 0)
+        TextLabel.Font = Enum.Font.SourceSans
+        TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TextLabel.TextScaled = true
+        TextLabel.TextSize = 14.000
+        TextLabel.TextWrapped = true
+        TextLabel.TextStrokeTransparency = 0
+        TextLabel.Text = IfUtility
+        TextLabel.TextColor3 = Color3.fromRGB(R,G,B)
+        TextLabel.Position = UDim2.new(0,0,0.8,0)
+    end
+end
+local function DrawEspUtility(UtilityInstance)
+    local primaryPart = UtilityInstance:FindFirstChildWhichIsA("BasePart", true)
+    if not primaryPart then return end
+    if primaryPart:FindFirstChild(EspName) then return end
+    if UtilityInstance:GetAttribute("Owner") then
+        local UtilOwner = UtilityInstance:GetAttribute("Owner")
+        if table.find(PlayerTeamIds,UtilOwner) then
+            
+        else
+            DrawnewESP(primaryPart,255,255,0,0.7,EspName, true, UtilityInstance.Name, 0.25)
+        end
+    elseif UtilityInstance:GetAttribute("Health") and UtilityInstance.Name == "Claymore" or UtilityInstance.Name == "NeedleMine" then
+        DrawnewESP(primaryPart,255,0,0,0.7,EspName, true, UtilityInstance.Name, 0.25)
+    end
+    
+end
+local function DrawUtilEsp()
+    for _, child in workspace:GetChildren() do
+        if child:IsA("Model") then
+            DrawEspUtility(child)
+        end
+    end
+end
+
+local function NameTeammate()
+    for _,Viewmodel in PlayerModels:GetChildren() do
+        if Viewmodel.Name == "LocalViewmodel" then
+            LocalPlayerModel = Viewmodel
+        end
+        if not Viewmodel then return end
+    end
+    for _, child in workspace:GetChildren() do
+        if child:IsA("Highlight") and child.OutlineColor ~= Color3.fromRGB(200,0,0) then
+            local adornee = child.Adornee
+            if adornee and adornee.Name ~= TeammateName then
+                adornee.Name = TeammateName
+            end
+        end
+    end
+    if Settings.RemoveScope == true then
+        for _,ScopePart in PlayerModels:GetDescendants() do
+            if ScopePart.Name == "ScopeModel" then
+                if ScopePart:FindFirstChildOfClass("Folder") then continue end
+                
+                for _,Part in ScopePart:GetChildren() do
+                    local ScopeTint = Part:FindFirstChildOfClass("Decal")
+                    if Part.Name == "RedDot" then continue end
+                    if ScopeTint then
+                        ScopeTint.Texture = 1
+                    end
+                    Part.Transparency = 0.75
+                end
+            end
+        end
+    end
+    
+    if Settings.RemoveArms == true then
+        local TransparentArms = {"arm1", "arm2", "shoulder1", "shoulder2"}
+        if not LocalPlayerModel then return end
+        for i,Arm in LocalPlayerModel:GetDescendants() do
+            if not Arm then return end
+            if table.find(TransparentArms, Arm.Name) then
+                if Arm:IsA("Model") then
+                    for _,part in Arm:GetChildren() do
+                        part.Transparency = 0.75
+                    end
+                elseif Arm:IsA("Part") then
+                    Arm.Transparency = 0.9
+                end
+            end
+        end
+    end
+end
+
+
+local function GunModifications()
+    if not LocalPlayerModel then return end
+    for _,Gun in LocalPlayerModel:GetChildren() do
+        if Gun:IsA("Model") and Gun.Name ~= "Model" then
+            if not Gun then return end
+            Gun.Gun.firerate.Value = GunSettings.firerate
+            Gun.Gun.recoil_up.Value = GunSettings.recoil_up
+            Gun.Gun.recoil_side.Value = GunSettings.recoil_side
+            Gun.Gun.speed.Value = GunSettings.Walkspeed
+            Gun.Gun.spread.Value = GunSettings.spread
+            Gun.Gun.ads.Value = GunSettings.ads
+            if GunSettings.AlterReloadSpeed == true then Gun.Gun.reload_speed.Value = GunSettings.reload_speed end
+            if GunSettings.AlterReloadSpeedWithDivide == true then Gun.Gun.reload_speed.Value = (Gun.Gun.reload_speed.Value / 3) + 0.3 end
+            
+        end
+    end
+end
+local function SoftWallTransparency()
+    for _,part in workspace:GetDescendants() do
+        if part:IsA("BasePart") and part.Material == Enum.Material.Glass and part.Transparency > 0 then 
+            part.Material = Enum.Material.SmoothPlastic
+            part.Transparency = 0.9 
+        end
+        if part:IsA("Configuration") and part.Name == "Breakable" or part.Name == "SoftWall"  then
+            for _,SoftWallParts in part.Parent:GetChildren() do
+                if SoftWallParts:IsA("BasePart") then
+                    if SoftWallParts.Material == Enum.Material.DiamondPlate then continue end
+                    SoftWallParts.Transparency = 0.6
+                end
+            end 
+        end
+    end
+end
+local function SwitchGun(LocalViewmodel)
+    LocalViewmodel.ChildAdded:Connect(function(child)
+        if child.Name ~= "Model" then
+            if Settings.GunModifications then
+            GunModifications()
+            end
+        end
+    end)
+end
+local function DrawEspEnemy()
+    local success, error = pcall(NameTeammate)
+    if not success then
+        warn("fuck u skid")
+    end
+    task.wait()
+    
+    for _,CharModel in pairs(PlayerModels:GetChildren()) do
+        for _,Gun in pairs(CharModel:GetChildren()) do
+            if CharModel.Name == TeammateName or CharModel.Name == "LocalViewmodel" then continue end
+            if Gun:IsA("Part") or Gun.Name == "Model" then continue end
+            Gun.Parent.Name = EnemyName
+            if Settings.CHAMS then
+                for _,PartOfModel in CharModel:GetDescendants() do
+                    if PartOfModel:IsA("Part") and CharModel.Name == EnemyName then
+                        PartOfModel.Material = Enum.Material.Neon
+                        PartOfModel.Color = Color3.fromRGB(255, 255, 255)
+                    end
+                end
+            end
+            
+            if Gun.Parent.Name == EnemyName then
+                local EspPart = Gun.Parent.head
+                if EspPart:FindFirstChild(EspName) then continue end
+                local ColourSettings = {
+                    R = 255,
+                    G = 255,
+                    B = 255
+                }
+                if Settings.ESP then
+                    DrawnewESP(EspPart, ColourSettings.R,ColourSettings.G,ColourSettings.B, 0.2,EspName, false, "Player So No Text", .5)
+                end
+            end
+        end
+    end
+end
+
+ 
+jasmode()
+DrawEspEnemy()
+NameTeammate()
+
+workspace.ChildAdded:Connect(function(Child)
+    if Child:IsA("Model") then
+        DrawEspEnemy()
+        DrawUtilEsp()
+        NameTeammate()
+
+    end
+end)
+
+local function onLocalViewmodel(viewmodel)
+	LocalPlayerModel = viewmodel
+	task.wait(1.25)
+    if Settings.GunModifications then
+        GunModifications()
+    end
+    NameTeammate()
+    SwitchGun(viewmodel)
+    jasmode()
+    if Settings.TransparentSoftwalls then
+        SoftWallTransparency()
+    end
+end
+
+local existing = PlayerModels:FindFirstChild("LocalViewmodel")
+if existing then
+	task.spawn(onLocalViewmodel, existing)
+end
+
+PlayerModels.ChildAdded:Connect(function(child)
+	if child.Name == "LocalViewmodel" then
+		onLocalViewmodel(child)
+    else
+        task.wait(1)
+        DrawEspEnemy()
+	end
+end)
+
+
+
+-- silent aim
+local function TempVisualiseRay(origin, direction)
+        local length = direction.Magnitude
+        local midpoint = origin + direction * 0.5
+        local RayPart = Instance.new("Part")
+        
+        RayPart.Anchored = true
+        RayPart.CanCollide = false
+        RayPart.CanQuery = false
+        RayPart.Transparency = 0
+        RayPart.Material = Enum.Material.Neon
+        RayPart.Color = Color3.fromRGB(219, 112, 147)
+        RayPart.Size = Vector3.new(0.03, 0.03, length)
+        RayPart.CFrame = CFrame.lookAt(midpoint, origin + direction)
+        RayPart.Parent = workspace
+        
+        local lifetime = 0.6
+        if shared.GunSettings and shared.GunSettings.firerate then
+            lifetime = (60 / shared.GunSettings.firerate)
+        end
+        Deb:AddItem(RayPart, lifetime)
+    end
+
+local function ShootRay(head, OriginPosition)
+        if not head then warn("head missing") end
+        if not OriginPosition then warn("gun missing") end
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {LocalPlayerModel}
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+        local toTarget = head.Position - OriginPosition.Position
+        local direction = toTarget.Unit * toTarget.Magnitude
+
+        local result = workspace:Raycast(OriginPosition.Position, direction, raycastParams)
+        TempVisualiseRay(OriginPosition.Position, direction)
+        if result then 
+            return result.Instance, result.Normal, result.Position
+        end
+        return nil
+    end
+
+local function target()
+    local ClosestPlr = math.huge
+    local Closest
+    local PlayerModels = workspace.Viewmodels
+    local Shotpart
+    local Gunremote
+    for _,m in pairs(PlayerModels:GetChildren()) do
+        if not m then continue end
+        if m.Name == TeammateName  then continue end
+        if m.Name == "LocalViewmodel" then
+            for _,v in pairs(m:GetDescendants()) do
+                if v:IsA("BasePart") and v.Name == "Shot" and v.Transparency == 1 then
+                    Shotpart = v
+                end
+            end
+
+            for _,r in pairs(LocalPlayerModel:GetDescendants()) do
+                if r:IsA("RemoteEvent") and r.Name == "remote" and r.Parent.Name == "StateObject" then
+                    Gunremote = r
+                end
+            end
+        end
+        
+        if m.Name == EnemyName then
+            local head = m:FindFirstChild("head") 
+            local Screenpos, Onscreen = Camera:WorldToViewportPoint(head.Position)
+            Screenpos = Vector2.new(Screenpos.X, Screenpos.Y)
+            if not Onscreen then continue end
+            local MouseVec3 = UserInputService:GetMouseLocation()
+            local distance = (Screenpos - MouseVec3).Magnitude
+            if distance < ClosestPlr then
+                ClosestPlr = distance
+                Closest = head
+            end 
+        end
+    end
+    return Closest, Shotpart, Gunremote
+end
+
+
+local function Crosshair()
+	
+	local RunService = game:GetService("RunService")
+	
+	local THICKNESS, ROT_SPEED, PULSE_SPEED = 2, 1, 5
+	local MIN_LEN, MAX_LEN = -10, -30
+	local COLOR_SPEED = 2
+	local PINK = Color3.fromRGB(255, 105, 180)
+	local BLACK = Color3.new(0, 0, 0)
+	local t, progress = 0, 0
+
+	local function addStroke(parent, mode)
+		local s = Instance.new("UIStroke")
+		s.ApplyStrokeMode = mode
+		s.Color = Color3.new(1, 1, 1)
+		s.Thickness = 2
+		s.Parent = parent
+	end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "AimSightGUI"
+	gui.ResetOnSpawn = false
+	gui.Parent = lp:WaitForChild("PlayerGui")
+
+	local container = Instance.new("Frame")
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.fromOffset(16, 16)
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.Parent = gui
+	local lines = {}
+	for i = 1, 4 do
+		local f = Instance.new("Frame")
+		f.BorderSizePixel = 0
+		f.ZIndex = 5
+		f.Parent = container
+		addStroke(f, Enum.ApplyStrokeMode.Border)
+		lines[i] = f
+	end
+
+	local label = Instance.new("TextLabel")
+	label.Text = "駒沢 乃依"
+	label.Font = Enum.Font.Nunito
+	label.Rotation = 0
+	label.TextScaled = true
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromOffset(150, 23)
+	label.ZIndex = 6
+	label.Parent = gui
+	addStroke(label, Enum.ApplyStrokeMode.Contextual)
+
+	local function rotationSpeed(p)
+		if p < 0.6 then return ROT_SPEED end
+		local s = (p - 0.6) / 0.35
+		return ROT_SPEED * math.max(1 - s * s * 0.7, 0.3)
+	end
+
+	RunService.RenderStepped:Connect(function(dt)
+		
+		t += dt
+		progress = (progress + rotationSpeed(progress) * dt) % 1
+
+		container.Position = UDim2.fromOffset(Mouse.X, Mouse.Y)
+		container.Rotation = progress * 360
+		label.Position = UDim2.fromOffset(Mouse.X - 70, Mouse.Y + 50)
+
+		local pulse = (math.sin(t * PULSE_SPEED) * 0.5 + 0.5) ^ 2
+		local len = MIN_LEN + (MAX_LEN - MIN_LEN) * pulse
+		local half = -THICKNESS / 2
+
+		lines[1].Size, lines[1].Position = UDim2.fromOffset(THICKNESS, len), UDim2.new(0.5, half, 0, 0)
+		lines[2].Size, lines[2].Position = UDim2.fromOffset(THICKNESS, len), UDim2.new(0.5, half, 1, -len)
+		lines[3].Size, lines[3].Position = UDim2.fromOffset(len, THICKNESS), UDim2.new(0, 0, 0.5, half)
+		lines[4].Size, lines[4].Position = UDim2.fromOffset(len, THICKNESS), UDim2.new(1, -len, 0.5, half)
+
+		-- cos starts at 1, so it begins pink, fades to black, then back to pink
+		local alpha = math.cos(t * COLOR_SPEED) * 0.5 + 0.5
+		local color = BLACK:Lerp(PINK, alpha)
+		for _, l in lines do l.BackgroundColor3 = color end
+		label.TextColor3 = color
+	end)
+end
+
+
+Crosshair()
+if Settings.GunModifications then
+    GunModifications()
+end
+
+local isHoldingG = false
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if Settings.SilentAim == true then
+        if gameProcessed then return end
+        if input.KeyCode == Settings.SilentAimKey then
+            isHoldingG = true
+            while isHoldingG do
+                local Closest, Shotpart, Gunremote = target()
+                if not Closest or not Shotpart or not Gunremote then
+                    Closest, Shotpart, Gunremote = target()
+                end
+                local _,Normal,_ = ShootRay(Closest,Shotpart)
+                if not Normal then
+                    
+                end
+                Gunremote:FireServer("shoot", Shotpart.CFrame, {{{
+                    Instance = Closest,
+                    Normal = Normal,
+                    Position = Closest.Position}}})
+                task.wait(.05)
+            end
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Settings.SilentAimKey then
+        isHoldingG = false
+    end
+end)
+local loadTime = os.clock() - start
+print(string.format(" NoiWare has been loaded in : %.2f ms", loadTime * 1000))
+
+
+
+
+
+
